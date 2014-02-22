@@ -208,21 +208,20 @@
 		
 		SLRequest *request = [SLRequest requestForServiceType:SLServiceTypeFacebook requestMethod:SLRequestMethodGET URL:[NSURL URLWithString:@"https://graph.facebook.com/me"] parameters:nil];
 		request.account = account;
-				
-		[request performRequestWithHandler:^(NSData *responseData, NSHTTPURLResponse *urlResponse, NSError *error) {
-			
-			NSDictionary *query = SAQueryParameters(request.preparedURLRequest.URL.query);
-			NSString *token = query[@"access_token"];
-		
-			block(!!token, [NSDictionary dictionaryWithObjectsAndKeys:
-				token, SAFacebookAccessToken,
-			nil], token ? nil : [NSError errorWithDomain:SAErrorDomain code:SAErrorHaltAndCatchFire userInfo:@{
-				NSLocalizedDescriptionKey: @"Can’t Find Access Token",
-				NSLocalizedFailureReasonErrorKey: [NSString stringWithFormat:@"%@ can not extract access_token from the Graph API /me query any more. :( It is looking at a request %@ for account %@ with type %@.", NSStringFromClass([self class]), request, account, account.accountType.accountTypeDescription]
-			}]);
-			
-		}];
-		
+        
+        NSDictionary *query = SAQueryParameters(request.preparedURLRequest.URL.query);
+        NSString *token = query[@"access_token"];
+        
+        if (token) {
+            block(YES, @{ SAFacebookAccessToken : token }, nil);
+        } else {
+            NSDictionary *errorInfo = @{
+                NSLocalizedDescriptionKey: @"Can’t Find Access Token",
+                NSLocalizedFailureReasonErrorKey: [NSString stringWithFormat:@"%@ can not extract access_token from the Graph API /me query any more. :( It is looking at a request %@ for account %@ with type %@.", NSStringFromClass([self class]), request, account, account.accountType.accountTypeDescription]
+                };
+            NSError *error = [NSError errorWithDomain:SAErrorDomain code:SAErrorHaltAndCatchFire userInfo:errorInfo];
+            block(NO, nil, error);
+        }
 		return;
 		
 	}
